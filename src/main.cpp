@@ -3,6 +3,7 @@
 #include <cstdlib>
 #include <array>
 #include <vector>
+#include <queue>
 
 constexpr int CanvasWidth = 500;
 constexpr int CanvasHeight = 500;
@@ -66,61 +67,164 @@ void set_grid_color(int x, int y, Color color) {
     cell.set_color(color);
 }
 
-struct Snake;
+enum Direction {
+    Up = 0,
+    Down = 1,
+    Left = 2,
+    Right = 3,
+};
+
+struct SnakePart {
+public:
+    std::queue<Direction> move_queue;
+    SDL_Point point;
+
+    void move() {
+        Direction direction = move_queue.front();
+        move_queue.pop();
+
+        if (direction == Direction::Up) {
+            point.y -= 1;
+            if (point.y < 0) {
+                point.y = GridHeight - 1;
+            }
+            return;
+        }
+
+        if (direction == Direction::Down) {
+            point.y += 1;
+            if (point.y > GridHeight -1) {
+                point.y = 0;
+            }
+            return;
+        }
+
+        if (direction == Direction::Left) {
+            point.x -= 1;
+            if (point.x < 0) {
+                point.x = GridWidth - 1;
+            }
+            return;
+        }
+
+        if (direction == Direction::Right) {
+            point.x += 1;
+
+            if (point.x > GridWidth - 1) {
+                point.x = 0;
+            }
+            return;
+        }
+    }
+
+    void add(Direction direction) {
+        move_queue.push(direction);
+    }
+
+    void render();
+};
+
+struct Snake {
+public:
+    Snake() {
+        auto mid_grid_x = GridWidth / 2;
+        auto mid_grid_y = GridHeight / 2;
+
+        this->body_points = std::vector<SnakePart>(3);
+        this->body_points[0].point = { mid_grid_x, mid_grid_y };
+        this->body_points[1].point = { mid_grid_x - 1, mid_grid_y };
+        this->body_points[2].point = { mid_grid_x - 2, mid_grid_y };
+
+        this->direction = Direction::Right;
+
+        this->body_points[1].add(direction);
+        this->body_points[2].add(direction);
+        this->body_points[2].add(direction);
+    }
+
+    void render();
+
+    void set_direction(Direction direction) {
+        switch (direction) {
+            case Direction::Up:
+                if (this->direction == Direction::Down)
+                    return;
+                break;
+            case Direction::Down:
+                if (this->direction == Direction::Up)
+                    return;
+                break;
+            case Direction::Left:
+                if (this->direction == Direction::Right)
+                    return;
+                break;
+            case Direction::Right:
+                if (this->direction == Direction::Left)
+                    return;
+                break;
+        }
+        this->direction = direction;
+    }
+
+    std::vector<SnakePart> body_points;
+private:
+    int length { 3 };
+    Direction direction;
+};
+
 
 struct GameState {
     int score = 0;
     SDL_Point food_point;
     Snake snake;
 
-    void render();
-} game_state;
-
-struct Snake {
-public:
-    void render() {
-        for (auto &point : body_points) {
-            set_grid_color()
-        }
+    GameState() {
+        set_food_point();
     }
-private:
-    int length { 3 };
-    std::vector<SDL_Point> body_points;
-    enum class Direction {
-        Up,
-        Down,
-        Right,
-        Left,
-    };
-};
+
+    void render();
+    void set_food_point();
+} game_state;
 
 struct context
 {
     SDL_Renderer *renderer;
-    int iteration;
 };
+
+void handle_input(int key) {
+    switch (key) {
+        case 0:
+            game_state.snake.set_direction(Direction::Up);
+            break;
+        case 1:
+            game_state.snake.set_direction(Direction::Down);
+            break;
+        case 2:
+            game_state.snake.set_direction(Direction::Left);
+            break;
+        case 3:
+            game_state.snake.set_direction(Direction::Right);
+            break;
+    }
+}
+
+extern "C" {
+void on_input(int key) {
+        handle_input(key);
+    }
+}
 
 void mainloop(void *arg)
 {
     auto *ctx = static_cast<context*>(arg);
-    SDL_Event  event;
-    if (SDL_PollEvent(&event)) {
-        if (event.type == SDL_KEYDOWN) {
-            auto key = event.key.keysym.sym;
-            switch () {
-
-            }
-        }
-    }
 
     SDL_Renderer *renderer = ctx->renderer;
 
-    SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
-    set_grid_color(0, 0, Color { 255, 0, 0 });
+    game_state.render();
     render_grid(renderer);
 
     SDL_RenderPresent(renderer);
-    ctx->iteration++;
+    SDL_Delay(1000);
 }
 
 int main()
@@ -131,7 +235,6 @@ int main()
     SDL_CreateWindowAndRenderer(CanvasWidth, CanvasHeight, 0, &window, &renderer);
 
     context ctx{};
-    ctx.iteration = 0;
     ctx.renderer = renderer;
 
     init_grid();
@@ -147,5 +250,29 @@ int main()
 }
 
 void GameState::render() {
+    init_grid();
     snake.render();
+    set_grid_color(food_point.x, food_point.y, { 255, 0, 0 });
+}
+
+void SnakePart::render() {
+    set_grid_color(point.x, point.y, { 255, 255, 0 });
+}
+
+void Snake::render() {
+    // check if snake is not hitting himself
+
+    for (auto &part : body_points) {
+        part.add(direction);
+        part.move();
+    }
+
+    for (auto &part : body_points) {
+        part.render();
+    }
+}
+
+void GameState::set_food_point() {
+    food_point.x = rand() % GridWidth;
+    food_point.y = rand() % GridHeight;
 }
