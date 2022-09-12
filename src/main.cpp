@@ -151,21 +151,9 @@ struct context
     SDL_Renderer *renderer;
 };
 
+std::queue<int> input_queue;
 void handle_input(int key) {
-    switch (key) {
-        case 0:
-            game_state.snake.set_direction(Direction::Up);
-            break;
-        case 1:
-            game_state.snake.set_direction(Direction::Down);
-            break;
-        case 2:
-            game_state.snake.set_direction(Direction::Left);
-            break;
-        case 3:
-            game_state.snake.set_direction(Direction::Right);
-            break;
-    }
+    input_queue.push(key);
 }
 
 extern "C" {
@@ -179,6 +167,26 @@ void mainloop(void *arg)
     auto ctx = static_cast<context*>(arg);
     SDL_Renderer *renderer = ctx->renderer;
 
+    if (!input_queue.empty()) {
+        auto key = input_queue.back();
+        switch (key) {
+            case 0:
+                game_state.snake.set_direction(Direction::Up);
+                break;
+            case 1:
+                game_state.snake.set_direction(Direction::Down);
+                break;
+            case 2:
+                game_state.snake.set_direction(Direction::Left);
+                break;
+            case 3:
+                game_state.snake.set_direction(Direction::Right);
+                break;
+        }
+
+        while(!input_queue.empty()) input_queue.pop();
+    }
+
     if (game_state.game_over) {
         SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
         SDL_RenderClear(renderer);
@@ -189,7 +197,7 @@ void mainloop(void *arg)
     }
 
     SDL_RenderPresent(renderer);
-    SDL_Delay(100);
+    SDL_Delay(50);
 }
 
 int main()
