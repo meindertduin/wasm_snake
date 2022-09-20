@@ -2,4 +2,4 @@
 
 This was a quick project of mine, to try out some Wasm using C++.
 
-![alt text](https://github.com/meinderduin/wasm_snake/docs/wasn_snake.png)
+![alt text](https://github.com/meindertduin/wasm_snake/blob/main/docs/wasm_snake.png)
